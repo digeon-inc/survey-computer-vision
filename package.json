@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "textlint": "^12.1.0",
+    "textlint-rule-preset-japanese": "^7.0.0"
+  },
+  "devDependencies": {}
+}
