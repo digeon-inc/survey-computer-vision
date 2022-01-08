@@ -83,3 +83,29 @@ ILSVRCという毎年開催されていたImageNetを用いた画像分類コン
 ### 実装の参考
 
 - [vision/resnet.py at main · pytorch/vision](https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py)
+
+## Transformer
+
+### 論文概要
+
+#### どんなもの？
+[Attention is All You Need](https://arxiv.org/abs/1706.03762)
+
+#### 先行研究と比べてどこがすごい？
+AttentionのみのEncoder-Decoderモデルで，計算量と精度が向上した．さらに並列計算が可能となった．
+
+#### 技術や手法のキモはどこ？
+- Scaled Dot-Product Attention
+- Multi-Head Attention
+- Positional Encoding
+
+#### どうやって有効だと検証した？
+
+#### 議論はある？
+
+#### 次に読むべき論文は？
+
+### アーキテクチャ詳細
+
+### 実装の参考
+- [pytorch/transformer.py at main · pytorch/pytorch](https://github.com/pytorch/pytorch/blob/master/torch/nn/modules/transformer.py)
