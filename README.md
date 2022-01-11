@@ -91,10 +91,10 @@ ILSVRCという毎年開催されていたImageNetを用いた画像分類コン
 #### どんなもの？
 [Attention is All You Need](https://arxiv.org/abs/1706.03762)
 
-2017年に提案された自然言語処理のモデル。コンピュータビジョンのモデルではないものの、この論文で提案されたEncoder-DecoderモデルのTransformerというアーキテクチャが後発のコンピュータビジョンのモデルに大きな影響を与えたので、ここで取り上げる。
+2017年に提案された自然言語処理のモデル。コンピュータビジョンのモデルではないものの、この論文で提案されたTransformerというアーキテクチャが後発のコンピュータビジョンのモデルに大きな影響を与えたので、ここで取り上げる。
 
 #### 先行研究と比べてどこがすごい？
-当時、Seq2SeqのモデルではRNNやCNNと併用してAttentionを用いるものがあったが、この論文ではRNNやCNNを排除してAttentionのみのTransformerというアーキテクチャを提案した。Transformerによって並列化が可能になって学習にかかる時間が削減され、精度も向上し、入力と出力の文章離れた位置にある任意の依存関係を学習しやすくなった。
+当時、Seq2SeqのモデルではRNNやCNNと併用してAttentionを用いるものがあった。しかし，この論文ではRNNやCNNを排除してAttentionのみのTransformerというアーキテクチャを提案した。Transformerによって並列化が可能になって学習にかかる時間が削減され、精度も向上し、入力と出力の文章離れた位置にある任意の依存関係を学習しやすくなった。
 
 #### 技術や手法のキモはどこ？
 
@@ -110,7 +110,7 @@ Attentionは、各単語に対してQuery(<img src="https://latex.codecogs.com/s
 
   - QueryとKeyの内積を<img src="https://latex.codecogs.com/svg.image?\sqrt{d_k}" title="\sqrt{d_k}" />で割っているのは、<img src="https://latex.codecogs.com/svg.image?d_k" title="d_k" />が大きくなったときにQueryとKeyの内積が大きくなり、softmaxの勾配が極端に小さくなっていまうのを防ぐためである。
 - Multi Head Attention
-  - 各単語に対して1組の<img src="https://latex.codecogs.com/svg.image?d_{model}" title="d_{model}" />次元のQuery、Key、Valueを持たせるのではなくて、それらを<img src="https://latex.codecogs.com/svg.image?h" title="h" />種類の異なる重みベクトルで写像したもので<img src="https://latex.codecogs.com/svg.image?h" title="h" />種類の異なるAttentionを計算することで、それぞれで異なる部分空間から有益な情報を抽出する。
+  - 各単語に対して1組の<img src="https://latex.codecogs.com/svg.image?d_{model}" title="d_{model}" />次元のQuery、Key、Valueを持たせるのではなく、それらを<img src="https://latex.codecogs.com/svg.image?h" title="h" />種類の異なる重みベクトルにより写像したもので<img src="https://latex.codecogs.com/svg.image?h" title="h" />種類の異なるAttentionを計算する。それによってそれぞれで異なる部分空間から有益な情報を抽出することができる。
   <img src="https://latex.codecogs.com/svg.image?\begin{aligned}Muiltihead(Q,K,V)&=Concat(head_1,&space;...,&space;head_h)W^O\\where\quad&space;head_i&=Attention(QW^i_Q,KW^i_K,VW^i_V)\end{aligned}" title="\begin{aligned}Muiltihead(Q,K,V)&=Concat(head_1, ..., head_h)W^O\\where\quad head_i&=Attention(QW^i_Q,KW^i_K,VW^i_V)\end{aligned}" />  
   ただし<img src="https://latex.codecogs.com/svg.image?W^i_Q\in\mathbb{R}^{d_{model}\times&space;d_k},W^i_K\in\mathbb{R}^{d_{model}\times&space;d_k},W^i_V\in\mathbb{R}^{d_{model}\times&space;d_v}" title="W^i_Q\in\mathbb{R}^{d_{model}\times d_k},W^i_K\in\mathbb{R}^{d_{model}\times d_k},W^i_V\in\mathbb{R}^{d_{model}\times d_v}" />
 - Positional Encoding
