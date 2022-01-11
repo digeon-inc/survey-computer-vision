@@ -91,12 +91,24 @@ ILSVRCという毎年開催されていたImageNetを用いた画像分類コン
 #### どんなもの？
 [Attention is All You Need](https://arxiv.org/abs/1706.03762)
 
+2017年に提案された自然言語処理のモデル．コンピュータビジョンのモデルではないものの，この論文で提案されたEncoder-DecoderモデルのTransformerというアーキテクチャが後発のコンピュータビジョンのモデルに大きな影響を与えたので，ここで取り上げる．
+
 #### 先行研究と比べてどこがすごい？
-AttentionのみのEncoder-Decoderモデルで，計算量と精度が向上した．さらに並列計算が可能となった．
+当時，Seq2SeqのモデルではRNNやCNNと併用してAttentionを用いるものがあったが，この論文ではRNNやCNNを排除してAttentionのみのTransformerというアーキテクチャを提案した．Transformerによって並列化が可能になって学習にかかる時間が削減され，精度も向上し，入力と出力の文章離れた位置にある任意の依存関係を学習しやすくなった．
 
 #### 技術や手法のキモはどこ？
-- Scaled Dot-Product Attention
-- Multi-Head Attention
+
+##### Attention
+<img src="https://latex.codecogs.com/svg.image?d_k" title="d_k" />次元のQuery(<img src="https://latex.codecogs.com/svg.image?Q" title="Q" />)とKey(<img src="https://latex.codecogs.com/svg.image?K" title="K" />)，及び<img src="https://latex.codecogs.com/svg.image?d_v" title="d_v" />次元のValue(<img src="https://latex.codecogs.com/svg.image?V" title="V" />)を用いて計算する．  
+
+###### Scaled Dot Product Attention
+![](./images/scaled-dot-product-attention.png)
+<p style="text-align: center;">画像は<a href="https://arxiv.org/pdf/1706.03762.pdf" target="blank_">論文</a>より引用</p>
+<img src="https://latex.codecogs.com/svg.image?Attention(Q,&space;K,&space;V)&space;=&space;softmax(\frac{QK^T}{\sqrt{d_k}})V" title="Attention(Q, K, V) = softmax(\frac{QK^T}{\sqrt{d_k}})V" />
+
+- 各Queryと各Keyの内積にsoftmax関数を適用し，QueryとKeyの関連度を計算する．さらにこれをValueとかけ合わせることで，各Queryと類似度の高いKeyに対応するValueほど重く重みづけされたValueの重み付き和が得られる．
+- QueryとKeyの内積を<img src="https://latex.codecogs.com/svg.image?\sqrt{d_k}" title="\sqrt{d_k}" />で割っているのは，<img src="https://latex.codecogs.com/svg.image?d_k" title="d_k" />が大きくなるとsoftmaxの勾配が極端に小さくなっていまうためである．
+- Multi Head Attention
 - Positional Encoding
 
 #### どうやって有効だと検証した？
