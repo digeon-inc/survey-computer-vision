@@ -91,33 +91,47 @@ ILSVRCという毎年開催されていたImageNetを用いた画像分類コン
 #### どんなもの？
 [Attention is All You Need](https://arxiv.org/abs/1706.03762)
 
-2017年に提案された自然言語処理のモデル．コンピュータビジョンのモデルではないものの，この論文で提案されたEncoder-DecoderモデルのTransformerというアーキテクチャが後発のコンピュータビジョンのモデルに大きな影響を与えたので，ここで取り上げる．
+2017年に提案された自然言語処理のモデル。コンピュータビジョンのモデルではないものの、この論文で提案されたEncoder-DecoderモデルのTransformerというアーキテクチャが後発のコンピュータビジョンのモデルに大きな影響を与えたので、ここで取り上げる。
 
 #### 先行研究と比べてどこがすごい？
-当時，Seq2SeqのモデルではRNNやCNNと併用してAttentionを用いるものがあったが，この論文ではRNNやCNNを排除してAttentionのみのTransformerというアーキテクチャを提案した．Transformerによって並列化が可能になって学習にかかる時間が削減され，精度も向上し，入力と出力の文章離れた位置にある任意の依存関係を学習しやすくなった．
+当時、Seq2SeqのモデルではRNNやCNNと併用してAttentionを用いるものがあったが、この論文ではRNNやCNNを排除してAttentionのみのTransformerというアーキテクチャを提案した。Transformerによって並列化が可能になって学習にかかる時間が削減され、精度も向上し、入力と出力の文章離れた位置にある任意の依存関係を学習しやすくなった。
 
 #### 技術や手法のキモはどこ？
 
-##### Attention
-<img src="https://latex.codecogs.com/svg.image?d_k" title="d_k" />次元のQuery(<img src="https://latex.codecogs.com/svg.image?Q" title="Q" />)とKey(<img src="https://latex.codecogs.com/svg.image?K" title="K" />)，及び<img src="https://latex.codecogs.com/svg.image?d_v" title="d_v" />次元のValue(<img src="https://latex.codecogs.com/svg.image?V" title="V" />)を用いて計算する．  
+Attentionは、各単語に対してQuery(<img src="https://latex.codecogs.com/svg.image?Q" title="Q" />)とKey(<img src="https://latex.codecogs.com/svg.image?K" title="K" />)、及びのValue(<img src="https://latex.codecogs.com/svg.image?V" title="V" />)を持たせ、それらを用いて計算する。  
+- Self Attention
+  - レイヤーごとの計算量が少ない
+  - 並列化しやすい
+  - 離れたところでも依存関係を学習できる
+  - 解釈性がある
+- Scaled Dot Product Attention
+  - 各Queryと各Keyの内積にsoftmax関数を適用し、QueryとKeyの関連度を計算する。さらにこれをValueとの内積をとることで、各Queryと類似度の高いKeyに対応するValueほど重く重みづけされたValueの重み付き和が得られる。ここで、QueryとKeyは  <img src="https://latex.codecogs.com/svg.image?d_k" title="d_k" />次元、Valueは<img src="https://latex.codecogs.com/svg.image?d_v" title="d_v" />次元である。
+  <img src="https://latex.codecogs.com/svg.image?Attention(Q,&space;K,&space;V)&space;=&space;softmax(\frac{QK^T}{\sqrt{d_k}})V" title="Attention(Q, K, V) = softmax(\frac{QK^T}{\sqrt{d_k}})V" />
 
-###### Scaled Dot Product Attention
-![](./images/scaled-dot-product-attention.png)
-<p style="text-align: center;">画像は<a href="https://arxiv.org/pdf/1706.03762.pdf" target="blank_">論文</a>より引用</p>
-<img src="https://latex.codecogs.com/svg.image?Attention(Q,&space;K,&space;V)&space;=&space;softmax(\frac{QK^T}{\sqrt{d_k}})V" title="Attention(Q, K, V) = softmax(\frac{QK^T}{\sqrt{d_k}})V" />
-
-- 各Queryと各Keyの内積にsoftmax関数を適用し，QueryとKeyの関連度を計算する．さらにこれをValueとかけ合わせることで，各Queryと類似度の高いKeyに対応するValueほど重く重みづけされたValueの重み付き和が得られる．
-- QueryとKeyの内積を<img src="https://latex.codecogs.com/svg.image?\sqrt{d_k}" title="\sqrt{d_k}" />で割っているのは，<img src="https://latex.codecogs.com/svg.image?d_k" title="d_k" />が大きくなるとsoftmaxの勾配が極端に小さくなっていまうためである．
+  - QueryとKeyの内積を<img src="https://latex.codecogs.com/svg.image?\sqrt{d_k}" title="\sqrt{d_k}" />で割っているのは、<img src="https://latex.codecogs.com/svg.image?d_k" title="d_k" />が大きくなったときにQueryとKeyの内積が大きくなり、softmaxの勾配が極端に小さくなっていまうのを防ぐためである。
 - Multi Head Attention
+  - 各単語に対して1組の<img src="https://latex.codecogs.com/svg.image?d_{model}" title="d_{model}" />次元のQuery、Key、Valueを持たせるのではなくて、それらを<img src="https://latex.codecogs.com/svg.image?h" title="h" />種類の異なる重みベクトルで写像したもので<img src="https://latex.codecogs.com/svg.image?h" title="h" />種類の異なるAttentionを計算することで、それぞれで異なる部分空間から有益な情報を抽出する。
+  <img src="https://latex.codecogs.com/svg.image?\begin{aligned}Muiltihead(Q,K,V)&=Concat(head_1,&space;...,&space;head_h)W^O\\where\quad&space;head_i&=Attention(QW^i_Q,KW^i_K,VW^i_V)\end{aligned}" title="\begin{aligned}Muiltihead(Q,K,V)&=Concat(head_1, ..., head_h)W^O\\where\quad head_i&=Attention(QW^i_Q,KW^i_K,VW^i_V)\end{aligned}" />  
+  ただし<img src="https://latex.codecogs.com/svg.image?W^i_Q\in\mathbb{R}^{d_{model}\times&space;d_k},W^i_K\in\mathbb{R}^{d_{model}\times&space;d_k},W^i_V\in\mathbb{R}^{d_{model}\times&space;d_v}" title="W^i_Q\in\mathbb{R}^{d_{model}\times d_k},W^i_K\in\mathbb{R}^{d_{model}\times d_k},W^i_V\in\mathbb{R}^{d_{model}\times d_v}" />
 - Positional Encoding
+  - 再帰や畳み込みを排除しているので、単語の順序把握するためにPositional Encodingを利用する。
+  - ここではサインとコサインを利用している。
 
 #### どうやって有効だと検証した？
+WMT 2014 English-German、 WMT 2014 English-Frenchというデータセットで英語からドイツ語、フランス語への翻訳タスクを行った。結果は英語-ドイツ語翻訳タスクではBLEUスコア28.4、英語-フランス語翻訳タスクではBLEUスコア41.8でstate-of-the-artを達成した。
 
 #### 議論はある？
+Attentionベースのモデルに期待しており、これをテキスト以外に画像、動画、音声などで活用できるようなAttentionを研究する予定だ。
 
 #### 次に読むべき論文は？
 
-### アーキテクチャ詳細
 
+### アーキテクチャ詳細
+![](./images/transformer.png)
+
+<p style="text-align: center;">画像は<a href="https://arxiv.org/pdf/1706.03762.pdf" target="blank_">論文</a>より引用</p>
+
+- DecoderのMasked Multi Head Attentionは、対象単語より左の単語のみに依存するように、softmaxの入力値を一部マスクしている。
+- Multi Head AttentionやFeed ForwardにはResidual構造がある。
 ### 実装の参考
 - [pytorch/transformer.py at main · pytorch/pytorch](https://github.com/pytorch/pytorch/blob/master/torch/nn/modules/transformer.py)
