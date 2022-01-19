@@ -94,28 +94,105 @@ ILSVRCという毎年開催されていたImageNetを用いた画像分類コン
 2017年に提案された自然言語処理のモデル。コンピュータビジョンのモデルではないものの、この論文で提案されたTransformerというアーキテクチャが後発のコンピュータビジョンのモデルに大きな影響を与えたので、ここで取り上げる。
 
 #### 先行研究と比べてどこがすごい？
-当時、Seq2SeqのモデルではRNNやCNNと併用してAttentionを用いるものがあった。しかし，この論文ではRNNやCNNを排除してAttentionのみのTransformerというアーキテクチャを提案した。Transformerによって並列化が可能になって学習にかかる時間が削減され、精度も向上し、入力と出力の文章離れた位置にある任意の依存関係を学習しやすくなった。
+当時、Seq2SeqのモデルではRNNやCNNと併用してAttentionを用いるものがあった。しかし、この論文ではRNNやCNNを排除してAttentionのみのTransformerというアーキテクチャを提案した。RNNを排除してAttentionや全結合層を用いることによって並列化が可能になって学習にかかる時間が削減された。さらに精度も向上し、入力と出力の文章離れた位置にある任意の依存関係を学習しやすくなった。
 
 #### 技術や手法のキモはどこ？
 
-Attentionは、各単語に対してQuery(<img src="https://latex.codecogs.com/svg.image?Q" title="Q" />)とKey(<img src="https://latex.codecogs.com/svg.image?K" title="K" />)、及びのValue(<img src="https://latex.codecogs.com/svg.image?V" title="V" />)を持たせ、それらを用いて計算する。  
-- Self Attention
-  - レイヤーごとの計算量が少ない
-  - 並列化しやすい
-  - 離れたところでも依存関係を学習できる
-  - 解釈性がある
 - Scaled Dot Product Attention
-  - 各Queryと各Keyの内積にsoftmax関数を適用し、QueryとKeyの関連度を計算する。さらにこれをValueとの内積をとることで、各Queryと類似度の高いKeyに対応するValueほど重く重みづけされたValueの重み付き和が得られる。ここで、QueryとKeyは  <img src="https://latex.codecogs.com/svg.image?d_k" title="d_k" />次元、Valueは<img src="https://latex.codecogs.com/svg.image?d_v" title="d_v" />次元である。
-  <img src="https://latex.codecogs.com/svg.image?Attention(Q,&space;K,&space;V)&space;=&space;softmax(\frac{QK^T}{\sqrt{d_k}})V" title="Attention(Q, K, V) = softmax(\frac{QK^T}{\sqrt{d_k}})V" />
-
+  - まず、embeddingされた入力ベクトル(sequence_length, d_model)に対して、Query、Key、Valueを計算する。これらは入力ベクトルをそれぞれ重み行列Wq(d_model, d_q)、Wk(d_model, d_k)、Wv(d_model, d_v)で写像して得られる。この論文ではself-attentionを用いるのと、全く同じ構造のレイヤーを複数重ねるので、d_q、d_k、d_v、d_modelは全て等しい。
+  - 各Queryと各Keyの内積にsoftmax関数を適用し、QueryとKeyの関連度を計算する。さらにこれをValueとの内積をとることで、各Queryと類似度の高いKeyに対応するValueほど重く重みづけされたValueの重み付き和が得られる。これは、入力のある部分に対して他のどの部分が重要になるかを抽出する操作とみなすことができる。
+  - <img src="https://latex.codecogs.com/svg.image?Attention(Q,&space;K,&space;V)&space;=&space;softmax(\frac{QK^T}{\sqrt{d_k}})V" title="Attention(Q, K, V) = softmax(\frac{QK^T}{\sqrt{d_k}})V" />
   - QueryとKeyの内積を<img src="https://latex.codecogs.com/svg.image?\sqrt{d_k}" title="\sqrt{d_k}" />で割っているのは、<img src="https://latex.codecogs.com/svg.image?d_k" title="d_k" />が大きくなったときにQueryとKeyの内積が大きくなり、softmaxの勾配が極端に小さくなっていまうのを防ぐためである。
+  
+Scaled Dot Product AttentionはPyTorchを用いて次のように実装できる。  
+```python
+class ScaledDotProductAttention(nn.Module):
+    def __init__(self, d_model: int) -> None:
+        """
+        Args:
+            d_model: embedded vector length
+        """
+        super().__init__()
+        self.d_k: int = d_model
+        self.w_q = nn.Linear(d_model, d_model, bias=False)
+        self.w_k = nn.Linear(d_model, d_model, bias=False)
+        self.w_v = nn.Linear(d_model, d_model, bias=False)
+        self.out = nn.Linear(d_model, d_model, bias=False)
+
+    def forward(self, x: torch.Tensor, mask: Optional[torch.BoolTensor] = None) -> torch.Tensor:
+        """
+        Args:
+            x: input tensor [batch_size, sequence_length, d_model]
+        Returns:
+            out: torch.Tensor [batch_size, sequence_length, d_model]
+        """
+        query, key, value = self.w_q(x), self.w_k(x), self.w_v(x)
+        query /= math.sqrt(self.d_k)
+        attn_weight = torch.bmm(query, key.transpose(-2, -1))
+        if mask is not None:
+            attn_weight = attn_weight.masked_fill(mask, -1e9)
+        attn_weight = functional.softmax(attn_weight, dim=-1)
+        attn = torch.matmul(attn_weight, value)
+        out = self.out(attn)
+        return out
+```
 - Multi Head Attention
-  - 各単語に対して1組の<img src="https://latex.codecogs.com/svg.image?d_{model}" title="d_{model}" />次元のQuery、Key、Valueを持たせるのではなく、それらを<img src="https://latex.codecogs.com/svg.image?h" title="h" />種類の異なる重みベクトルにより写像したもので<img src="https://latex.codecogs.com/svg.image?h" title="h" />種類の異なるAttentionを計算する。それによってそれぞれで異なる部分空間から有益な情報を抽出することができる。
-  <img src="https://latex.codecogs.com/svg.image?\begin{aligned}Muiltihead(Q,K,V)&=Concat(head_1,&space;...,&space;head_h)W^O\\where\quad&space;head_i&=Attention(QW^i_Q,KW^i_K,VW^i_V)\end{aligned}" title="\begin{aligned}Muiltihead(Q,K,V)&=Concat(head_1, ..., head_h)W^O\\where\quad head_i&=Attention(QW^i_Q,KW^i_K,VW^i_V)\end{aligned}" />  
-  ただし<img src="https://latex.codecogs.com/svg.image?W^i_Q\in\mathbb{R}^{d_{model}\times&space;d_k},W^i_K\in\mathbb{R}^{d_{model}\times&space;d_k},W^i_V\in\mathbb{R}^{d_{model}\times&space;d_v}" title="W^i_Q\in\mathbb{R}^{d_{model}\times d_k},W^i_K\in\mathbb{R}^{d_{model}\times d_k},W^i_V\in\mathbb{R}^{d_{model}\times d_v}" />
+  - 各単語に対して1組の<img src="https://latex.codecogs.com/svg.image?d_{model}" title="d_{model}" />次元のQuery、Key、Valueを持たせるのではなく、それらを<img src="https://latex.codecogs.com/svg.image?h" title="h" />種類の異なる重みベクトルにより写像したもので<img src="https://latex.codecogs.com/svg.image?h" title="h" />種類の異なるAttentionを計算する。それぞれのQuery、Key、Valueから構成されるAttention機構はheadと呼ばれ、それぞれで異なる部分空間から有益な情報を抽出することができる。 これによって、アンサンブルのような効果が得られる
+  - <img src="https://latex.codecogs.com/svg.image?\begin{aligned}Muiltihead(Q,K,V)&=Concat(head_1,&space;...,&space;head_h)W^O\\where\quad&space;head_i&=Attention(QW^i_Q,KW^i_K,VW^i_V)\end{aligned}" title="\begin{aligned}Muiltihead(Q,K,V)&=Concat(head_1, ..., head_h)W^O\\where\quad head_i&=Attention(QW^i_Q,KW^i_K,VW^i_V)\end{aligned}" />  
+  ただし<img src="https://latex.codecogs.com/svg.image?W^i_Q\in\mathbb{R}^{d_{model}\times&space;d_k},W^i_K\in\mathbb{R}^{d_{model}\times&space;d_k},W^i_V\in\mathbb{R}^{d_{model}\times&space;d_v}" title="W^i_Q\in\mathbb{R}^{d_{model}\times d_k},W^i_K\in\mathbb{R}^{d_{model}\times d_k},W^i_V\in\mathbb{R}^{d_{model}\times d_v}" />  
+
+ 
+Multi Head Attentionは、Scaled Dot Product Attentionの実装を少し改変する事で実装できる。計算効率のため、各headに分割されたQuery, Key, Valueをそれぞれまとめて保持する。Query、Key、Valueのテンソルの形状は(batch_size, num_head, sequence_length, dim_per_head)のようになる。
+```python
+class MultiHeadAttention(nn.Module):
+    def __init__(self, d_model: int, num_head: int) -> None:
+        """
+        Args:
+            d_model: embedded vector length
+        """
+        super().__init__()
+        assert d_model % num_head == 0, f"d_model({d_model}) must be dividible by num_head({num_head})"
+        self.d_k: int = d_model
+        self.num_head: int = num_head
+        self.dim_per_head: int = d_model // num_head
+        self.w_q = nn.Linear(d_model, d_model, bias=False)
+        self.w_k = nn.Linear(d_model, d_model, bias=False)
+        self.w_v = nn.Linear(d_model, d_model, bias=False)
+        self.out = nn.Linear(d_model, d_model, bias=False)
+
+    def forward(
+        self, x: torch.Tensor, mask: Optional[torch.BoolTensor] = None
+    ) -> torch.Tensor:
+        """
+        Args:
+            x: input tensor [batch_size, sequence_length, d_model]
+        Returns:
+            out: torch.Tensor [batch_size, sequence_length, d_model]
+        """
+        batch_size: int = x.size()[0]
+        query: torch.Tensor = self.w_q(x)
+        key: torch.Tensor = self.w_k(x)
+        value: torch.Tensor = self.w_v(x)
+        # [batch_size, sequence_length, d_model] -> [batch_size, sequence_length, num_head, dim_per_head] -> [batch_size, num_head, sequence_length, dim_per_head]
+        query = query.view(batch_size, -1, self.num_head, self.dim_per_head).transpose(1,2)
+        key = key.view(batch_size, -1, self.num_head, self.dim_per_head).transpose(1,2)
+        value = value.view(batch_size, -1, self.num_head, self.dim_per_head).transpose(1,2)
+        query /= math.sqrt(self.d_k)
+        attn_weight = torch.matmul(query, key.transpose(2, 3))
+        if mask is not None:
+            attn_weight = attn_weight.masked_fill(mask, -1e9)
+        attn_weight = functional.softmax(attn_weight, dim=-1)
+        attn = torch.matmul(attn_weight, value)
+        # [batch_size, num_head, sequence_length, dim_per_head] -> [batch_size, sequence_length, num_head, dim_per_head] -> [batch_size, sequence_length, d_model]
+        attn = attn.transpose(1, 2).contiguous().view(batch_size, -1, self.d_k)
+        out = self.out(attn)
+        return out
+```
 - Positional Encoding
   - 再帰や畳み込みを排除しているので、単語の順序把握するためにPositional Encodingを利用する。
-  - ここではサインとコサインを利用している。
+  - ここではサインとコサインを用い、posを単語の位置、iをd_model、すなわち入力ベクトルの次元として以下のような式で計算する。計算した値は入力ベクトルに単に加算される。
+  - <img src="https://latex.codecogs.com/svg.image?\begin{aligned}PE_{(pos,2i)}&=sin(pos/10000^{2i/d_{model}})\\PE_{(pos,2i&plus;1)}&=cos(pos/10000^{2i/d_{model}})\end{aligned}&space;" title="\begin{aligned}PE_{(pos,2i)}&=sin(pos/10000^{2i/d_{model}})\\PE_{(pos,2i+1)}&=cos(pos/10000^{2i/d_{model}})\end{aligned}" /> 
+  - Transformerはサインやコサインといった関数の形状を簡単に学習できるため、位置エンコーディングとしてこのような関数を利用している。
 
 #### どうやって有効だと検証した？
 WMT 2014 English-German、 WMT 2014 English-Frenchというデータセットで英語からドイツ語、フランス語への翻訳タスクを行った。結果は英語-ドイツ語翻訳タスクではBLEUスコア28.4、英語-フランス語翻訳タスクではBLEUスコア41.8でstate-of-the-artを達成した。
