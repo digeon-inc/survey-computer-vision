@@ -212,3 +212,50 @@ Attentionベースのモデルに期待しており、これをテキスト以�
 - Multi Head AttentionやFeed ForwardにはResidual構造がある。
 ### 実装の参考
 - [pytorch/transformer.py at main · pytorch/pytorch](https://github.com/pytorch/pytorch/blob/master/torch/nn/modules/transformer.py)
+
+
+## Vision Transformer(ViT)
+
+### 論文概要
+
+#### どんなもの？
+[An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale](https://arxiv.org/abs/2010.11929)  
+
+2020年にGoogle Brainが発表したモデル．Transformerから着想を得ている．
+
+#### 先行研究と比べてどこがすごい？
+当時，Attentionを画像認識モデルに使用する際にはCNNと組み合わせる，もしくは全体のアーキテクチャを維持しつつ特定のコンポーネントをAttentionで置き換えるという方法があった．しかし，Vision TransformerはCNNから完全に脱却し，Transformerのアーキテクチャをほぼそのまま利用した．大規模なデータセットでの事前学習をすることで，色々なベンチマークにてSOTAを達成した．
+
+#### 技術や手法のキモはどこ？
+- Transformer Encoder
+  - Vaswani et al.2017のTransformerとは少し違い，Multi Head AttentionやMLP(FeedForward)の前にNormalizationレイヤがある．
+  - Multi Head Attentionについては，Vaswani et al.2017のTransformerのものを使用している．
+
+![](./images/vit-encoder.png)
+
+<p style="text-align: center;">画像は<a href="https://arxiv.org/pdf/2010.11929.pdf" target="blank_">論文</a>より引用</p>
+
+#### どうやって有効だと検証した？
+JFT-300Mという約3億の画像からなるデータセットで事前学習したViTをImageNet(Real)，CIFAR-10，VTABなどのデータセットでfine tuingすると，当時のSOTAだったBiT-LやNoisy Studentといったモデルを上回るaccuracyを得た．
+
+#### 議論はある？
+- 事前学習に使うデータセットが小さいと，既存のSOTAモデルを上回ることができない．ViTは巨大なデータセットによる事前学習で真価を発揮し，さらにデータセットのスケーリングによって性能が改善される余地がある．
+- パッチごとの位置エンコーディングは，元の画像に戻した時の距離が近いパッチや列や行が同じパッチでは類似どが高いことがわかった．このように，ViTは切り出されたパッチが元の画像でどこの位置にあったかを学習する．
+
+#### 次に読むべき論文は？
+
+### アーキテクチャ詳細
+全体のアーキテクチャは次のようになっている．  
+![](./images/vit.png)
+
+<p style="text-align: center;">画像は<a href="https://arxiv.org/pdf/2010.11929.pdf" target="blank_">論文</a>より引用</p>
+
+1. 画像をパッチに分割
+    - 元の画像のテンソルが<img src="https://latex.codecogs.com/svg.image?H\times{W\times{C}" title="H\times{W\times{C}" />次元(それぞれ縦，横，チャネル数を表す)のであるとする．これを<img src="https://latex.codecogs.com/svg.image?N" title="N" />個のパッチにするとき，この画像テンソルを
+2. パッチのembedding
+3. パッチのpositional encodingをパッチのembeddingに足す
+4. TransformerのEncoderに複数回パッチのベクトルを通す
+5. MLP(多層パーセプトロン)でクラスを分類する
+
+### 実装の参考
+- [vit-pytorch/vit.py at main · lucidrains/vit-pytorch](https://github.com/lucidrains/vit-pytorch/blob/main/vit_pytorch/vit.py)
